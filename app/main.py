@@ -20,6 +20,10 @@ from app.utils.llm import ask_llm
 from app.utils.tts import speak_text_stream
 
 app = FastAPI()
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -140,3 +144,5 @@ async def converse_websocket(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for order_id: {order_id}")
+# Serve static files (index.html, JS, CSS)
+app.mount("/", StaticFiles(directory=Path(__file__).parent.parent / "public", html=True), name="static")
