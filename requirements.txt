@@ -10,7 +10,7 @@ langchain-groq
 langchain
 sounddevice 
 numpy
-openai-whisper
+
 gradio
 # Add any other specific libraries used in your app.utils modules below:
 # e.g., if using ElevenLabs for TTS:
