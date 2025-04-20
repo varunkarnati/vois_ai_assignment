@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice AI Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    h1 { margin-bottom: 1rem; }
+
+    .orb {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background-color: grey;
+      margin: 1rem auto;
+      transition: 0.3s all;
+    }
+
+    .orb.listening { background-color: #4a90e2; }
+    .orb.speaking { background-color: #50e3c2; }
+    .orb.idle { background-color: #6c757d; }
+
+    #status {
+      margin: 1rem;
+      font-size: 1rem;
+    }
+
+    .btn {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 0.8rem 2rem;
+      font-size: 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+
+    .btn:hover { background-color: #3a7bc8; }
+
+    .btn.end {
+      background-color: #e94f4f;
+    }
+
+    .btn.end:hover {
+      background-color: #c93d3d;
+    }
+
+    #audio { display: none; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Voice Assistant</h1>
+  <div class="orb idle" id="orb"></div>
+  <div id="status">Press Start to Begin</div>
+  <div>
+    <button class="btn" onclick="startConversation()">Start Conversation</button>
+    <button class="btn end" onclick="endConversation()">End Conversation</button>
+  </div>
+  <audio id="audio" autoplay></audio>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const orb = document.getElementById("orb");
+    const audioEl = document.getElementById("audio");
+    const startButton = document.querySelector("button.btn");
+    const endButton = document.querySelector("button.btn.end");
+
+    let ws = null;
+    let micStream = null;
+    let mediaRecorder = null;
+    let audioContext = null;
+    let source = null;
+    let processor = null;
+    let silenceStart = null;
+    let recordingStartTime = null;
+    const rmsThreshold = 0.005;
+    const silenceDuration = 1500;
+    const maxRecordingTime = 10000;
+
+    function updateStatus(text, state) {
+      statusEl.textContent = text;
+      orb.className = `orb ${state}`;
+    }
+
+    async function initializeMic() {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    async function startConversation() {
+      startButton.disabled = true;
+      updateStatus("🔌 Connecting...", "idle");
+      await initializeMic();
+
+      ws = new WebSocket("ws://localhost:8000/ws/converse");
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        updateStatus("🧠 Connected", "idle");
+      };
+
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.audio) {
+          playBase64Audio(data.audio);
+          updateStatus("🗣️ Assistant responding...", "speaking");
+          audioEl.onended = () => {
+            updateStatus("🎤 Listening...", "listening");
+            startRecording();
+          };
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        updateStatus("❌ Connection failed", "idle");
+      };
+    }
+
+    function endConversation() {
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+
+      if (mediaRecorder?.state === "recording") {
+        mediaRecorder.stop();
+      }
+
+      if (processor) processor.disconnect();
+      if (source) source.disconnect();
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+
+      updateStatus("🔴 Conversation Ended", "idle");
+      startButton.disabled = false;
+    }
+
+    function playBase64Audio(base64) {
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "audio/wav" });
+      const url = URL.createObjectURL(blob);
+      audioEl.src = url;
+    }
+
+    async function startRecording() {
+      stopRecordingCleanup();
+
+      updateStatus("🎤 Listening...", "listening");
+      recordingStartTime = Date.now();
+      silenceStart = null;
+
+      const chunks = [];
+
+      if (!audioContext || audioContext.state === 'closed') {
+        audioContext = new AudioContext();
+      }
+
+      source = audioContext.createMediaStreamSource(micStream);
+      processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+      processor.onaudioprocess = (e) => {
+        if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+        const input = e.inputBuffer.getChannelData(0);
+        const rms = Math.sqrt(input.reduce((a, b) => a + b * b, 0) / input.length);
+        if (rms < rmsThreshold) {
+          if (!silenceStart) silenceStart = Date.now();
+          else if (Date.now() - silenceStart > silenceDuration) stopRecordingCleanup();
+        } else {
+          silenceStart = null;
+        }
+        if (Date.now() - recordingStartTime > maxRecordingTime) stopRecordingCleanup();
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      const options = { mimeType: 'audio/webm;codecs=opus' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) options.mimeType = '';
+
+      mediaRecorder = new MediaRecorder(micStream, options);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        updateStatus("🧠 Processing...", "idle");
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
+        const wavBuffer = await convertBlobToWav(blob);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(wavBuffer);
+        }
+      };
+
+      mediaRecorder.start(500);
+    }
+
+    function stopRecordingCleanup() {
+      if (mediaRecorder?.state === "recording") mediaRecorder.stop();
+      processor?.disconnect();
+      source?.disconnect();
+      processor = null;
+      source = null;
+      silenceStart = null;
+    }
+
+    async function convertBlobToWav(blob) {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const numChannels = audioBuffer.numberOfChannels;
+      const sampleRate = audioBuffer.sampleRate;
+      const samples = audioBuffer.getChannelData(0);
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + samples.length * 2, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(view, 36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++, offset += 2) {
+        let s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+
+      return buffer;
+    }
+  </script>
+</body>
+</html>

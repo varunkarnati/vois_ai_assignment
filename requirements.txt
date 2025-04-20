@@ -1,0 +1,25 @@
+# requirements.txt
+mangum
+fastapi
+uvicorn[standard] # Includes websockets support needed for /ws/converse
+numpy
+soundfile
+openai          # Assuming for LLM (ask_llm) and potentially TTS (speak_text_stream)
+openai-whisper  # Assuming for STT (transcribe_audio)
+langchain-groq
+langchain
+sounddevice 
+numpy
+openai-whisper
+gradio
+# Add any other specific libraries used in your app.utils modules below:
+# e.g., if using ElevenLabs for TTS:
+elevenlabs
+python-multipart
+streamlit-webrtc
+pydub
+
+
+# Note:
+# - 'soundfile' might require the system library 'libsndfile' to be installed.
+# - 'openai-whisper' requires 'ffmpeg' to be installed on your system.
