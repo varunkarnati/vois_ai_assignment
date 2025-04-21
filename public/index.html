@@ -104,7 +104,8 @@
       updateStatus("🔌 Connecting...", "idle");
       await initializeMic();
 
-      ws = new WebSocket("ws://localhost:8000/ws/converse");
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${protocol}://${window.location.host}/ws/converse`);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
