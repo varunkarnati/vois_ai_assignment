@@ -11,12 +11,16 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID = os.getenv("VOICE_ID", "9BWtsMINqrJLrRacOk9x")
 MODEL_ID = os.getenv("MODEL_ID", "eleven_turbo_v2")
 
+
 async def speak_text_stream(text: str) -> str:
     if not ELEVENLABS_API_KEY:
         logger.error("ElevenLabs API key is missing.")
         return ""
 
-    uri = f"wss://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}/stream-input?model_id={MODEL_ID}&output_format=pcm_24000"
+    uri = (
+        f"wss://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}/"
+        f"stream-input?model_id={MODEL_ID}&output_format=pcm_24000"
+    )
     logger.info(f"Connecting to ElevenLabs WebSocket: {uri}")
 
     audio_chunks = b""
@@ -69,7 +73,9 @@ async def speak_text_stream(text: str) -> str:
     try:
         audio_np = np.frombuffer(audio_chunks, dtype=np.int16)
         wav_buffer = io.BytesIO()
-        sf.write(wav_buffer, audio_np, samplerate=24000, format="WAV")
+        sf.write(
+            wav_buffer, audio_np, samplerate=24000, format="WAV"
+        )
         wav_buffer.seek(0)
         base64_wav = base64.b64encode(wav_buffer.read()).decode("utf-8")
         logger.info(f"Successfully generated WAV base64, length: {len(base64_wav)}")
