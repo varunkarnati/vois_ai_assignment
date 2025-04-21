@@ -17,19 +17,16 @@ from app.utils.tools import (
     remove_item_from_order, get_daily_specials
 )
 
-# Load environment and set up logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize LLM
 llm = ChatGroq(
     temperature=0.7,
     groq_api_key=os.getenv("GROQ_API_KEY"),
     model_name="llama-3.1-8b-instant"
 )
 
-# Tool mapping
 tool_map = {
     "get_item_price": get_item_price,
     "get_available_menu_items": get_available_menu_items,
@@ -43,7 +40,6 @@ tool_map = {
     "get_daily_specials": get_daily_specials,
 }
 
-# Tools that require order_id to be passed
 ORDER_ID_TOOLS = {
     "add_item_to_order",
     "get_current_order",
@@ -52,16 +48,14 @@ ORDER_ID_TOOLS = {
     "remove_item_from_order",
 }
 
-# Bind LLM with tool usage
 llm_with_tools = llm.bind_tools(list(tool_map.values()), tool_choice="auto")
 
 
-async def ask_llm(user_input: str, order_id: str) -> str:
+async def ask_llm(user_input: str, order_id: str) -> dict:
     if order_id is None:
         order_id = str(random.randint(1000, 9999))
         logger.info(f"Generated new Order ID: {order_id}")
 
-    # Prepare the system message with better instruction
     messages: list[BaseMessage] = [
         SystemMessage(content=f"""
 You are a friendly voice assistant at a restaurant managing Order ID: {order_id}.
@@ -98,10 +92,7 @@ Your responsibilities:
     final_response_content = "Sorry, I couldn't process that."
 
     try:
-        # First pass (might include tool calls)
         ai_msg = await llm_with_tools.ainvoke(messages)
-
-        # Only include non-empty assistant content in history
         if ai_msg.content and ai_msg.content.strip():
             messages.append(ai_msg)
 
@@ -128,16 +119,11 @@ Your responsibilities:
                 tool_outputs.append(ToolMessage(content=output, tool_call_id=tool_call["id"]))
 
             messages.extend(tool_outputs)
-
-            # Second pass: LLM responds after tool results
             final_msg = await llm.ainvoke(messages)
         else:
             final_msg = ai_msg
 
-        # Final response
         final_response_content = final_msg.content.strip() if final_msg.content else final_response_content
-
-        # Save user + final assistant turn only (skip raw tool call placeholders)
         if final_response_content:
             save_interaction(order_id, user_input, final_response_content)
             logger.info(f"Order {order_id}: Interaction saved.")
@@ -147,4 +133,14 @@ Your responsibilities:
     except Exception as e:
         logger.error(f"Order {order_id}: LLM interaction failed: {e}", exc_info=True)
 
-    return final_response_content
+    # 🧾 Fetch actual order from tool
+    try:
+        order_info = get_current_order({"order_id": order_id})
+    except Exception as e:
+        logger.warning(f"Order {order_id}: Could not fetch order details: {e}")
+        order_info = {"items": [], "total": 0.0}
+
+    return {
+        "text": final_response_content,
+        "order": order_info
+    }

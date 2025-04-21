@@ -102,20 +102,25 @@ async def signed_url(agent_id: str):
         return JSONResponse(content={"error": "Failed to generate signed URL"}, status_code=500)
 
 from uuid import uuid4
+from uuid import uuid4
+
 @app.websocket("/ws/converse")
 async def converse_websocket(websocket: WebSocket):
     await websocket.accept()
     order_id = str(uuid4())[:4]
     logger.info(f"New session started with order_id: {order_id}")
 
-    # 👉 Send initial greeting immediately
     initial_greeting = "Hello! Welcome to our restaurant. How can I help you order today?"
     audio_base64 = await speak_text_stream(initial_greeting)
     await websocket.send_json({
         "orderId": order_id,
         "transcript": initial_greeting,
         "response": initial_greeting,
-        "audio": audio_base64
+        "audio": audio_base64,
+        "order": {
+            "items": [],
+            "total": 0.0
+        }
     })
 
     try:
@@ -131,18 +136,24 @@ async def converse_websocket(websocket: WebSocket):
                 await websocket.send_json({"error": "Transcription failed"})
                 continue
 
-            llm_response = await ask_llm(transcript, order_id=order_id)
+            llm_result = await ask_llm(transcript, order_id=order_id)
+            llm_response = llm_result["text"]
+            order_info = llm_result["order"]
             audio_base64 = await speak_text_stream(llm_response)
             os.remove(tmp_path)
 
             await websocket.send_json({
                 "orderId": order_id,
-                "transcript": transcript,
+                "user": transcript,
+                "transcript": llm_response,
                 "response": llm_response,
-                "audio": audio_base64
+                "audio": audio_base64,
+                "order": order_info
             })
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for order_id: {order_id}")
+
+
 # Serve static files (index.html, JS, CSS)
 app.mount("/", StaticFiles(directory=Path(__file__).parent.parent / "public", html=True), name="static")

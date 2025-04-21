@@ -136,13 +136,16 @@ def remove_item_from_order(item_name: str, quantity: int = 1) -> str:
     return f"Removed {removed} {target_display_name}(s)."
 
 @tool
-def get_current_order() -> list:
-    """returns the current order"""
+def get_current_order(order_id: str = "default") -> dict:
+    """returns the current order and its total"""
+    order = ORDERS.get(order_id, [])
     summary = {}
-    for item in current_order:
-        name = item['name']
-        summary[name] = summary.get(name, 0) + 1
-    return [{"name": name, "quantity": qty} for name, qty in summary.items()]
+    for item in order:
+        summary[item["name"]] = summary.get(item["name"], 0) + 1
+    return {
+        "items": [f"{qty} x {name}" for name, qty in summary.items()],
+        "total": round(sum(item["price"] for item in order), 2)
+    }
 
 @tool
 def calculate_order_total() -> float:
