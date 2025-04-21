@@ -3,27 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice AI Assistant</title>
+  <title>☕ Voice AI Restaurant Assistant</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #121212;
+      background: url('https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1400&q=80') no-repeat center center fixed;
+      background-size: cover;
       color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
+      justify-content: start;
+      min-height: 100vh;
+      padding-top: 2rem;
+      margin: 0;
     }
 
-    h1 { margin-bottom: 1rem; }
+    .container {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 2rem;
+      border-radius: 15px;
+      max-width: 800px;
+      width: 90%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffcc70;
+    }
 
     .orb {
       width: 100px;
       height: 100px;
       border-radius: 50%;
-      background-color: grey;
+      background-color: #6c757d;
       margin: 1rem auto;
       transition: 0.3s all;
     }
@@ -34,237 +47,158 @@
 
     #status {
       margin: 1rem;
-      font-size: 1rem;
+      text-align: center;
     }
 
     .btn {
-      background-color: #4a90e2;
+      background-color: #ff914d;
       color: white;
       border: none;
-      padding: 0.8rem 2rem;
+      padding: 0.6rem 1.6rem;
       font-size: 1rem;
-      border-radius: 20px;
+      border-radius: 25px;
       cursor: pointer;
       margin: 0.5rem;
     }
 
-    .btn:hover { background-color: #3a7bc8; }
+    .btn:hover { background-color: #ff7f24; }
+    .btn.end { background-color: #e94f4f; }
+    .btn.end:hover { background-color: #c93d3d; }
 
-    .btn.end {
-      background-color: #e94f4f;
+    #transcript-box {
+      background-color: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
     }
 
-    .btn.end:hover {
-      background-color: #c93d3d;
+    .message { margin-bottom: 0.8rem; }
+    .message.user { color: #ffa07a; }
+    .message.assistant { color: #b0e0e6; }
+
+    details {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1rem;
     }
 
-    #audio { display: none; }
+    summary {
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    ul { list-style: none; padding-left: 1rem; }
   </style>
 </head>
 <body>
-  <h1>🎙️ Voice Assistant</h1>
-  <div class="orb idle" id="orb"></div>
-  <div id="status">Press Start to Begin</div>
-  <div>
-    <button class="btn" onclick="startConversation()">Start Conversation</button>
-    <button class="btn end" onclick="endConversation()">End Conversation</button>
+  <div class="container">
+    <h1>☕ Voice Assistant</h1>
+    <div class="orb idle" id="orb"></div>
+    <div id="status">Press Start to Begin</div>
+    <div style="text-align: center">
+      <button class="btn" onclick="startConversation()">Start Conversation</button>
+      <button class="btn end" onclick="endConversation()">End Conversation</button>
+    </div>
+
+    <div id="transcript-box"></div>
+
+    <details>
+      <summary>View Order Details</summary>
+      <ul id="order-items"></ul>
+      <p id="order-total">Total: $0.00</p>
+    </details>
   </div>
+
   <audio id="audio" autoplay></audio>
 
   <script>
     const statusEl = document.getElementById("status");
     const orb = document.getElementById("orb");
     const audioEl = document.getElementById("audio");
-    const startButton = document.querySelector("button.btn");
-    const endButton = document.querySelector("button.btn.end");
-
+    const transcriptBox = document.getElementById("transcript-box");
     let ws = null;
-    let micStream = null;
-    let mediaRecorder = null;
-    let audioContext = null;
-    let source = null;
-    let processor = null;
-    let silenceStart = null;
-    let recordingStartTime = null;
-    const rmsThreshold = 0.005;
-    const silenceDuration = 1500;
-    const maxRecordingTime = 10000;
+    let pendingEnd = false;
 
-    function updateStatus(text, state) {
+    function updateStatus(text, state = "idle") {
       statusEl.textContent = text;
       orb.className = `orb ${state}`;
     }
 
-    async function initializeMic() {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    function appendMessage(role, text) {
+      const msg = document.createElement("div");
+      msg.className = `message ${role}`;
+      msg.textContent = `${role === 'user' ? 'You' : 'Assistant'}: ${text}`;
+      transcriptBox.appendChild(msg);
+      transcriptBox.scrollTop = transcriptBox.scrollHeight;
     }
 
-    async function startConversation() {
-      startButton.disabled = true;
-      updateStatus("🔌 Connecting...", "idle");
-      await initializeMic();
-
-      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(`${protocol}://${window.location.host}/ws/converse`);
+    function startConversation() {
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${protocol}://${location.host}/ws/converse`;
+      ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
-        updateStatus("🧠 Connected", "idle");
+        updateStatus("Connected. Waiting for greeting...", "idle");
       };
 
-      ws.onmessage = async (event) => {
+      ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+
+        if (data.transcript) appendMessage("assistant", data.transcript);
+        if (data.order) updateOrderSummary(data.order.items, data.order.total);
+
         if (data.audio) {
-          playBase64Audio(data.audio);
-          updateStatus("🗣️ Assistant responding...", "speaking");
+          const audio = base64ToBlobUrl(data.audio);
+          audioEl.src = audio;
           audioEl.onended = () => {
-            updateStatus("🎤 Listening...", "listening");
-            startRecording();
+            if (pendingEnd) {
+              cleanupConversation();
+            } else {
+              updateStatus("Listening...", "listening");
+            }
           };
+          updateStatus("Assistant speaking...", "speaking");
         }
       };
 
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        updateStatus("❌ Connection failed", "idle");
-      };
+      ws.onerror = () => updateStatus("WebSocket error.", "idle");
     }
 
     function endConversation() {
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-
-      if (mediaRecorder?.state === "recording") {
-        mediaRecorder.stop();
-      }
-
-      if (processor) processor.disconnect();
-      if (source) source.disconnect();
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-      }
-
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop());
-        micStream = null;
-      }
-
-      updateStatus("🔴 Conversation Ended", "idle");
-      startButton.disabled = false;
+      pendingEnd = true;
+      updateStatus("Ending after current response...", "idle");
     }
 
-    function playBase64Audio(base64) {
+    function cleanupConversation() {
+      if (ws) ws.close();
+      updateStatus("❌ Conversation Ended", "idle");
+      pendingEnd = false;
+    }
+
+    function base64ToBlobUrl(base64) {
       const binaryString = atob(base64);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
       const blob = new Blob([bytes], { type: "audio/wav" });
-      const url = URL.createObjectURL(blob);
-      audioEl.src = url;
+      return URL.createObjectURL(blob);
     }
 
-    async function startRecording() {
-      stopRecordingCleanup();
-
-      updateStatus("🎤 Listening...", "listening");
-      recordingStartTime = Date.now();
-      silenceStart = null;
-
-      const chunks = [];
-
-      if (!audioContext || audioContext.state === 'closed') {
-        audioContext = new AudioContext();
-      }
-
-      source = audioContext.createMediaStreamSource(micStream);
-      processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-      processor.onaudioprocess = (e) => {
-        if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-        const input = e.inputBuffer.getChannelData(0);
-        const rms = Math.sqrt(input.reduce((a, b) => a + b * b, 0) / input.length);
-        if (rms < rmsThreshold) {
-          if (!silenceStart) silenceStart = Date.now();
-          else if (Date.now() - silenceStart > silenceDuration) stopRecordingCleanup();
-        } else {
-          silenceStart = null;
-        }
-        if (Date.now() - recordingStartTime > maxRecordingTime) stopRecordingCleanup();
-      };
-
-      source.connect(processor);
-      processor.connect(audioContext.destination);
-
-      const options = { mimeType: 'audio/webm;codecs=opus' };
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) options.mimeType = '';
-
-      mediaRecorder = new MediaRecorder(micStream, options);
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        updateStatus("🧠 Processing...", "idle");
-        const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
-        const wavBuffer = await convertBlobToWav(blob);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(wavBuffer);
-        }
-      };
-
-      mediaRecorder.start(500);
-    }
-
-    function stopRecordingCleanup() {
-      if (mediaRecorder?.state === "recording") mediaRecorder.stop();
-      processor?.disconnect();
-      source?.disconnect();
-      processor = null;
-      source = null;
-      silenceStart = null;
-    }
-
-    async function convertBlobToWav(blob) {
-      const arrayBuffer = await blob.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      const numChannels = audioBuffer.numberOfChannels;
-      const sampleRate = audioBuffer.sampleRate;
-      const samples = audioBuffer.getChannelData(0);
-      const buffer = new ArrayBuffer(44 + samples.length * 2);
-      const view = new DataView(buffer);
-
-      function writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
-      }
-
-      writeString(view, 0, 'RIFF');
-      view.setUint32(4, 36 + samples.length * 2, true);
-      writeString(view, 8, 'WAVE');
-      writeString(view, 12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, 1, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * 2, true);
-      view.setUint16(32, 2, true);
-      view.setUint16(34, 16, true);
-      writeString(view, 36, 'data');
-      view.setUint32(40, samples.length * 2, true);
-
-      let offset = 44;
-      for (let i = 0; i < samples.length; i++, offset += 2) {
-        let s = Math.max(-1, Math.min(1, samples[i]));
-        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-      }
-
-      return buffer;
+    function updateOrderSummary(items, total) {
+      const list = document.getElementById("order-items");
+      const totalEl = document.getElementById("order-total");
+      list.innerHTML = "";
+      items.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+      totalEl.textContent = `Total: $${total.toFixed(2)}`;
     }
   </script>
 </body>
