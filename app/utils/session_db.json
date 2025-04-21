@@ -210,5 +210,73 @@
       "user": "Okay. Do you have any special for today?",
       "assistant": "We have a couple of specials today. Our Soup of the Day is Tomato Basil for $5.50, and Chef's Special Pasta is a Penne pasta with grilled chicken and pesto cream sauce for $16.00. Would you like to order either of these or something else?"
     }
+  ],
+  "a37c": [
+    {
+      "user": "[background noise] Uh, what's on the menu today?",
+      "assistant": "We have a variety of delicious options today. We've got Margherita Pizza, Pepperoni Pizza, Cheeseburger, Veggie Burger, Caesar Salad, French Fries, and Soda. What can I get for you to start?"
+    },
+    {
+      "user": "[car engine moving] Um, order a Margherita pizza and that's it. Give me the final order.",
+      "assistant": "To confirm, your order ID is a37c and you have ordered 1 Margherita Pizza. The current order and total are:\n\n- Margherita Pizza\nTotal: $15.99\n\nWould you like to add anything else to your order?"
+    },
+    {
+      "user": "[laughs] That's it. That's it.",
+      "assistant": "Order ID: a37c \n- 1 Margherita Pizza ( $15.99 )"
+    }
+  ],
+  "50a1": [
+    {
+      "user": "... what do you have on the menu today?",
+      "assistant": "Welcome to our restaurant! We have a variety of delicious options today. What can I get for you?"
+    },
+    {
+      "user": "[laughs] Ah, do you have anything special for today?",
+      "assistant": "We have a delicious Soup of the Day - Tomato Basil for $5.50, and our Chef's Special Pasta, which is a penne pasta with grilled chicken and pesto cream sauce, priced at $16. What sounds good to you?"
+    },
+    {
+      "user": "Get me a tomato basil and that's it.",
+      "assistant": "Let me try again. Did you mean to order our \"Soup of the Day: Tomato Basil\" for $5.50?"
+    },
+    {
+      "user": "... when you say that? Yes.",
+      "assistant": "You're looking at our menu. Got a bit sidetracked. Back to your order. I've added the Soup of the Day: Tomato Basil to order 50a1."
+    }
+  ],
+  "fbd3": [
+    {
+      "user": "Okay. Do you have a Margherita pizza?",
+      "assistant": "We do have a Margherita Pizza. That'll be $16.99. Would you like to add it to your order, Order ID fbd3?"
+    },
+    {
+      "user": "[laughs] Yes, edit.",
+      "assistant": "Got it. I've added Margherita Pizza to order fbd3.\n\nCurrent order: \n- 1 Margherita Pizza\n\nWould you like to order anything else?"
+    },
+    {
+      "user": "[laughs] No, I'm fine.",
+      "assistant": "You'd like to order a Soda. Would you like to add a Soda to order fbd3?"
+    }
+  ],
+  "3e81": [
+    {
+      "user": "[laughs] What do you have on the menu with the pizzas?",
+      "assistant": "We have Margherita Pizza for $12.99, Pepperoni Pizza for $14.50, and some other tasty options like Cheeseburger, Veggie Burger, Caesar Salad, French Fries, and Soda. What catches your eye?"
+    },
+    {
+      "user": "Okay. Get me a Margherita pizza, please.",
+      "assistant": "Got it. I've added Margherita Pizza to order 3e81.\n\nYour current order is:\n1 x Margherita Pizza ($12.99)\n\nTotal: $12.99"
+    },
+    {
+      "user": "Yeah. Okay. Uh, do you have any sodas also?",
+      "assistant": "We have Soda on the menu. Would you like to add a Soda to your order?"
+    },
+    {
+      "user": "[engine revving] Yes, please. Add us whatever.",
+      "assistant": "Got it. I've added Soda to order 3e81.\n\nYour current order is:\n1 x Margherita Pizza ($12.99)\n1 x Soda\n\nTotal: $15.99"
+    },
+    {
+      "user": "[laughs] [laughs]",
+      "assistant": "I'm glad I could add that to your order. Is there anything else I can get for you, or would you like to stick with what you've got?"
+    }
   ]
 }
