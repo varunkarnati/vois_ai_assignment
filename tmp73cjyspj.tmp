@@ -1,0 +1,29 @@
+{
+  "4d78": [],
+  "12345": [
+    {
+      "name": "Margherita Pizza",
+      "price": 12.99
+    }
+  ],
+  "daf0": [
+    {
+      "name": "Cheeseburger",
+      "price": 9.99
+    },
+    {
+      "name": "Margherita Pizza",
+      "price": 12.99
+    },
+    {
+      "name": "Soda",
+      "price": 1.99
+    }
+  ],
+  "6708": [
+    {
+      "name": "Margherita Pizza",
+      "price": 12.99
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "role": "user",
+    "content": "What do you have on the menu today?",
+    "timestamp": "2025-04-24T15:04:58.161762"
+  },
+  {
+    "role": "tool",
+    "content": "[{'name': 'Margherita Pizza', 'price': 12.99}, {'name': 'Pepperoni Pizza', 'price': 14.5}, {'name': 'Cheeseburger', 'price': 9.99}, {'name': 'Veggie Burger', 'price': 9.5}, {'name': 'Caesar Salad', 'price': 8.5}, {'name': 'French Fries', 'price': 3.99}, {'name': 'Soda', 'price': 1.99}]",
+    "timestamp": "2025-04-24T15:04:58.612754"
+  },
+  {
+    "role": "assistant",
+    "content": "",
+    "timestamp": "2025-04-24T15:04:58.900942"
+  }
+]
