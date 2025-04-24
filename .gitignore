@@ -1,2 +1,39 @@
-.vercel
+# Vercel deployment directory
+.vercel/
+
+# Environment variables
 .env
+.env.*
+
+# Python cache/temp files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+*.db-journal
+*.tmp
+*.bak
+*.swp
+
+# Temporary audio files
+*.webm
+*.wav
+*.mp3
+
+# Uploaded/generated files
+tmp/
+temp/
+*.tmp.*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Pydub or ffmpeg cache
+ffmpeg_temp/
