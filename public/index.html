@@ -168,7 +168,7 @@
       await initializeMic();
 
       const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-      const wsUrl = `${protocol}//${location.host}/ws/converse`;
+      const wsUrl = `${protocol}://${location.host}/ws/converse`;
       ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 

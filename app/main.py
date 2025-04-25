@@ -158,5 +158,14 @@ async def converse_websocket(websocket: WebSocket):
         logger.info(f"WebSocket disconnected for order_id: {order_id}")
 
 
-# Serve static files (index.html, JS, CSS)
-app.mount("/", StaticFiles(directory=Path(__file__).parent.parent / "public", html=True), name="static")
+from fastapi.responses import HTMLResponse
+
+
+# Serve index.html manually at /
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    html_path = Path(__file__).parent.parent / "public" / "index.html"
+    return HTMLResponse(content=html_path.read_text(), status_code=200)
+
+# Serve static files (like CSS, JS) at /static
+app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "public"), name="static")
